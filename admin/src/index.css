@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+/* @config {
+  theme: {
+    extend: {
+      colors: {
+        primary: "#0f766e",
+      },
+      fontFamily: {
+        sans: ['Poppins', 'sans-serif'],
+      }
+    }
+  }
+}
+
+::-webkit-scrollbar{
+    @apply hidden
+} */

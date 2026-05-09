@@ -1,0 +1,81 @@
+@startuml
+title mediVerse - System Flow Chart
+
+skinparam shadowing false
+skinparam activity {
+  BackgroundColor #F8FAFC
+  BorderColor #334155
+  DiamondBackgroundColor #ECFEFF
+  DiamondBorderColor #0F766E
+  StartColor #0F766E
+  EndColor #334155
+  FontColor #0F172A
+}
+
+start
+:Open mediVerse;
+
+if (Select role?) then (Patient/User)
+  :Browse doctors list;
+  if (Logged in?) then (No)
+    :Register or Login;
+    :JWT token issued;
+  endif
+
+  :Select doctor, date, and slot;
+  :Request booking via /api/user/book-appointment;
+  if (Doctor available + slot free?) then (Yes)
+    :Create appointment;
+    :Reserve slot in doctor profile;
+    :Open My Appointments;
+    if (Pay online now?) then (Yes)
+      :Create Razorpay order;
+      if (Payment verified?) then (Yes)
+        :Mark appointment payment=true;
+      else (No)
+        :Show payment failed/retry;
+      endif
+    else (No)
+      :Keep unpaid appointment;
+    endif
+    if (Cancel appointment?) then (Yes)
+      :Set cancelled=true;
+      :Release booked slot;
+    endif
+  else (No)
+    :Show slot unavailable;\nChoose another slot;
+  endif
+
+elseif (Doctor)
+  :Doctor login (/api/doctor/login);
+  :Access doctor dashboard;
+  :View assigned appointments;
+  if (Take action?) then (Complete)
+    :Mark appointment completed;
+  else (Cancel)
+    :Mark appointment cancelled;
+  endif
+  :Update doctor profile/fees/availability;
+
+else (Admin)
+  :Admin login (/api/admin/login);
+  :Access admin dashboard;
+  :Add doctor (upload image to Cloudinary);
+  :View all doctors;
+  :Change doctor availability;
+  :View all appointments;
+  :Cancel appointment if required;
+  :Generate dashboard stats/reports;
+endif
+
+:Persist data in MongoDB;
+stop
+
+legend right
+mediVerse Core Integrations
+- MongoDB: users, doctors, appointments
+- Cloudinary: doctor/user images
+- Razorpay: online payment + verification
+endlegend
+
+@enduml
