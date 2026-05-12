@@ -12,6 +12,7 @@ const AdminContextProvider=(props)=>{
     const [doctors,setDoctors]=useState([])
     const [appointments,setAppointments]=useState([]);
     const [dashData,setDashData]=useState(false)
+    const [patients,setPatients]=useState([])
 
     const getAllDoctors=async()=>{
         try {
@@ -28,6 +29,59 @@ const AdminContextProvider=(props)=>{
             console.log(error);
             toast.error(error.message)
         }
+    }
+
+    const getAllPatients=async()=>{
+      try {
+        const {data} = await axios.get(backendUrl + '/api/admin/patients',{headers:{atoken}})
+        if(data.success){
+          setPatients(data.patients)
+        } else {
+          toast.error(data.message)
+        }
+      } catch (error) {
+        console.log(error);
+        toast.error(error.message)
+      }
+    }
+
+    const deletePatient=async(patientId)=>{
+      try {
+        const confirmed = window.confirm('Delete this patient and all related appointments?')
+        if(!confirmed) return;
+
+        const {data}= await axios.delete(backendUrl + `/api/admin/patient/${patientId}`,{headers:{atoken}})
+        if(data.success){
+          toast.success(data.message)
+          getAllPatients()
+        } else {
+          toast.error(data.message)
+        }
+      } catch (error) {
+        console.log(error);
+        toast.error(error.message)
+      }
+    }
+
+    const updatePatient=async(patientId,patientData)=>{
+      try {
+        const {data} = await axios.patch(backendUrl + `/api/admin/patient/${patientId}`,{
+          ...patientData,
+          address: JSON.stringify(patientData.address)
+        },{headers:{atoken}})
+        if(data.success){
+          toast.success(data.message)
+          getAllPatients()
+          return true
+        } else {
+          toast.error(data.message)
+          return false
+        }
+      } catch (error) {
+        console.log(error);
+        toast.error(error.message)
+        return false
+      }
     }
 
    const changeAvailability=async(docId)=>{
@@ -100,6 +154,7 @@ doctors,getAllDoctors,
 changeAvailability,
 appointments,setAppointments,
 getAllAppointments,cancelAppointment,
+patients,getAllPatients,deletePatient,updatePatient,
 dashData,getDashData
 
 }

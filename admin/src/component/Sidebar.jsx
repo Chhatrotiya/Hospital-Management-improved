@@ -27,6 +27,9 @@ const Sidebar = () => {
           <NavLink className={({isActive})=>`flex items-center px-4 py-3.5 md:px-8 md:min-w-72 cursor-pointer transition-colors ${isActive? 'bg-primary/10 border-l-4 border-primary text-primary font-medium' : 'hover:bg-stone-100 hover:text-stone-800'}`} to={'/doctors-list'}>
             <p>Doctor List</p>
           </NavLink>
+          <NavLink className={({isActive})=>`flex items-center px-4 py-3.5 md:px-8 md:min-w-72 cursor-pointer transition-colors ${isActive? 'bg-primary/10 border-l-4 border-primary text-primary font-medium' : 'hover:bg-stone-100 hover:text-stone-800'}`} to={'/patients'}>
+            <p>Patients</p>
+          </NavLink>
         </ul>
       }
       {

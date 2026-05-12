@@ -146,4 +146,63 @@ const adminDashboard=async(req,res)=>{
     }
 }
 
-export {addDoctor,loginAdmin,allDoctor,appointmentAdmin,appointmentCancel,adminDashboard}
+const allPatients = async (req, res) => {
+    try {
+        const patients = await userModel.find({}).select('-password');
+        res.json({success:true,patients});
+    } catch (err) {
+        console.log(err);
+        res.json({success:false,message:err.message});
+    }
+}
+
+const updatePatient = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, email, phone, gender, dob, address } = req.body;
+
+        if (!name || !email || !phone || !gender || !dob) {
+            return res.json({success:false,message:'Missing required fields'});
+        }
+
+        const existingPatient = await userModel.findById(id);
+        if (!existingPatient) {
+            return res.json({success:false,message:'Patient not found'});
+        }
+
+        await userModel.findByIdAndUpdate(id, {
+            name,
+            email,
+            phone,
+            gender,
+            dob,
+            address: address ? JSON.parse(address) : existingPatient.address,
+        });
+
+        res.json({success:true,message:'Patient updated successfully'});
+    } catch (err) {
+        console.log(err);
+        res.json({success:false,message:err.message});
+    }
+}
+
+const deletePatient = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const existingPatient = await userModel.findById(id);
+        if (!existingPatient) {
+            return res.json({success:false,message:'Patient not found'});
+        }
+
+        await userModel.findByIdAndDelete(id);
+        await appointmentModel.deleteMany({ userId: id });
+
+        res.json({success:true,message:'Patient deleted successfully'});
+    } catch (err) {
+        console.log(err);
+        res.json({success:false,message:err.message});
+    }
+}
+
+export {addDoctor,loginAdmin,allDoctor,appointmentAdmin,appointmentCancel,adminDashboard,allPatients,updatePatient,deletePatient}

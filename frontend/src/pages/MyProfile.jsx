@@ -3,6 +3,7 @@ import { assets } from '../assets/assets'
 import { Appcontext } from '../context/AppContext';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 
 
 const Myprofile = () => {
@@ -19,9 +20,10 @@ const Myprofile = () => {
   //   dob:"2000-01-20",
   // })
 
-  const {userData,setUserData,token ,backendUrl,loadProfileData}=useContext(Appcontext)
+  const {userData,setUserData,token,setToken,backendUrl,loadProfileData}=useContext(Appcontext)
   const [isEdit,setIsEdit]=useState(false);
   const [image,setImage]=useState(false);
+  const navigate = useNavigate();
 
   const upadateUserProfileData=async ()=>{
    try {
@@ -48,6 +50,26 @@ const Myprofile = () => {
    } catch (error) {
      toast.error(error.message);
    }
+  }
+
+  const deleteUserAccount = async () => {
+    try {
+      const confirmed = window.confirm('Are you sure you want to delete your account? This action cannot be undone.');
+      if(!confirmed) return;
+
+      const { data } = await axios.delete(backendUrl + '/api/user/delete-profile', { headers: { token } });
+      if(data.success){
+        toast.success(data.message);
+        localStorage.removeItem('token');
+        setToken('');
+        setUserData(false);
+        navigate('/login');
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
   }
 
 
@@ -226,10 +248,10 @@ const Myprofile = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className='flex justify-center pt-6 border-t border-stone-200'>
+          <div className='flex flex-col items-center gap-4 pt-6 border-t border-stone-200 md:flex-row md:justify-between'>
             {
               isEdit ? (
-                <div className='flex gap-4'>
+                <div className='flex flex-col sm:flex-row gap-4 w-full justify-center'>
                   <button
                     className='bg-stone-900 hover:bg-stone-800 text-white px-8 py-3 rounded-lg font-medium transition-colors'
                     onClick={upadateUserProfileData}
@@ -246,12 +268,20 @@ const Myprofile = () => {
                   </button>
                 </div>
               ) : (
-                <button
-                  className='bg-stone-900 hover:bg-stone-800 text-white px-8 py-3 rounded-lg font-medium transition-colors'
-                  onClick={() => setIsEdit(true)}
-                >
-                  ✏️ Edit Profile
-                </button>
+                <div className='flex flex-col sm:flex-row gap-4 w-full justify-center'>
+                  <button
+                    className='bg-stone-900 hover:bg-stone-800 text-white px-8 py-3 rounded-lg font-medium transition-colors'
+                    onClick={() => setIsEdit(true)}
+                  >
+                    ✏️ Edit Profile
+                  </button>
+                  <button
+                    className='bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-medium transition-colors'
+                    onClick={deleteUserAccount}
+                  >
+                    🗑️ Delete Account
+                  </button>
+                </div>
               )
             }
           </div>

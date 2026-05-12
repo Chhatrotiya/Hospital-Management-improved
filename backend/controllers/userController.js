@@ -105,11 +105,33 @@ const updateProfile= async (req,res)=>{
        const imageUrl=imageUpload.secure_url;
        await userModel.findByIdAndUpdate(userId,{image:imageUrl})
      }
-     res.json({success:true,messagge:'profile updated'})
+     res.json({success:true,message:'profile updated'})
     } 
     catch (err) {
        console.log(err);
         res.json({success:false,message:err.message})  
+    }
+}
+
+const deleteProfile= async (req,res)=>{
+    try {
+        const {userId}=req.body;
+        if(!userId){
+            return res.json({success:false,message:'Not authorized'})
+        }
+
+        const user = await userModel.findById(userId);
+        if(!user){
+            return res.json({success:false,message:'User not found'})
+        }
+
+        await userModel.findByIdAndDelete(userId);
+        await appointmentModel.deleteMany({userId});
+
+        res.json({success:true,message:'Account deleted successfully'})
+    } catch (err) {
+        console.log(err);
+        res.json({success:false,message:err.message})
     }
 }
 
@@ -261,4 +283,4 @@ const varifyRazorpay=async (req,res)=>{
     }
 }
 
-export {registerUser,loginUser,getProfile,updateProfile,bookAppointment,listAppointment,cancelAppointment,paymentRazorpay,varifyRazorpay}
+export {registerUser,loginUser,getProfile,updateProfile,bookAppointment,listAppointment,cancelAppointment,paymentRazorpay,varifyRazorpay,deleteProfile}
