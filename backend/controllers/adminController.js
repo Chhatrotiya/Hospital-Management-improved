@@ -205,4 +205,23 @@ const deletePatient = async (req, res) => {
     }
 }
 
-export {addDoctor,loginAdmin,allDoctor,appointmentAdmin,appointmentCancel,adminDashboard,allPatients,updatePatient,deletePatient}
+const deleteDoctor = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const existingDoctor = await doctorModel.findById(id);
+        if (!existingDoctor) {
+            return res.json({success:false,message:'Doctor not found'});
+        }
+
+        await doctorModel.findByIdAndDelete(id);
+        await appointmentModel.deleteMany({ docId: id });
+
+        res.json({success:true,message:'Doctor deleted successfully'});
+    } catch (err) {
+        console.log(err);
+        res.json({success:false,message:err.message});
+    }
+}
+
+export {addDoctor,loginAdmin,allDoctor,appointmentAdmin,appointmentCancel,adminDashboard,allPatients,updatePatient,deletePatient,deleteDoctor}

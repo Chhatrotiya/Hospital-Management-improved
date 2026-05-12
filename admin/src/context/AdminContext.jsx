@@ -101,6 +101,24 @@ const AdminContextProvider=(props)=>{
     }
    }
 
+   const deleteDoctor=async(docId)=>{
+    try {
+      const confirmed = window.confirm('Delete this doctor and all related appointments?')
+      if(!confirmed) return;
+
+      const {data} = await axios.delete(backendUrl + `/api/admin/doctor/${docId}`,{headers:{atoken}})
+      if(data.success){
+        toast.success(data.message)
+        getAllDoctors()
+      } else {
+        toast.error(data.message)
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(error.message)
+    }
+   }
+
  const  getAllAppointments=async()=>{
    try {
 
@@ -151,7 +169,7 @@ const AdminContextProvider=(props)=>{
 const value={
 atoken,setAtoken,backendUrl,
 doctors,getAllDoctors,
-changeAvailability,
+changeAvailability,deleteDoctor,
 appointments,setAppointments,
 getAllAppointments,cancelAppointment,
 patients,getAllPatients,deletePatient,updatePatient,

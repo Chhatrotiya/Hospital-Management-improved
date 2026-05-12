@@ -30,6 +30,14 @@ const AppContextProvider=(props)=>{
         }
     }
 
+    const handleUserDeleted = () => {
+        localStorage.removeItem('token');
+        setToken('');
+        setUserData(false);
+        toast.info('Your account has been deleted. Please sign up again.');
+        window.location.href = '/login';
+    }
+
     const loadProfileData=async()=>{
         try {
             const {data}=await axios.get(backendUrl +'/api/user/get-profile',{headers:{token}})
@@ -37,11 +45,19 @@ const AppContextProvider=(props)=>{
                 setUserData(data.userData);
             }
             else{
-                toast.error(data.message);
+                if(data.message && (data.message.includes('not found') || data.message.includes('User not found'))){
+                    handleUserDeleted();
+                } else {
+                    toast.error(data.message);
+                }
             }
         } catch (error) {
-                 console.log(error);
-            toast.error(error.message);
+            console.log(error);
+            if(error.response?.status === 404 || error.response?.status === 401){
+                handleUserDeleted();
+            } else {
+                toast.error(error.message);
+            }
         }
     }
 

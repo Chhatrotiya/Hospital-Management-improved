@@ -3,7 +3,7 @@ import { AdminContext } from '../../context/AdminContext'
 
 const DoctorsList = () => {
 
-  const {atoken,doctors,getAllDoctors,changeAvailability}=useContext(AdminContext);
+  const {atoken,doctors,getAllDoctors,changeAvailability,deleteDoctor}=useContext(AdminContext);
 
   useEffect(()=>{
      if(atoken){
@@ -39,12 +39,20 @@ const DoctorsList = () => {
               </div>
               <div className='flex items-center justify-between'>
                 <span className='text-stone-400 text-xs'>Experience: {item.experience}</span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); changeAvailability(item._id); }}
-                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${item.available ? 'bg-green-50 text-green-600 hover:bg-green-100' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
-                >
-                  {item.available ? 'Active' : 'Inactive'}
-                </button>
+                <div className='flex gap-2'>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); changeAvailability(item._id); }}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${item.available ? 'bg-green-50 text-green-600 hover:bg-green-100' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
+                  >
+                    {item.available ? 'Active' : 'Inactive'}
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); deleteDoctor(item._id); }}
+                    className='px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-600 hover:bg-red-100 transition-colors'
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </div>
           </div>
