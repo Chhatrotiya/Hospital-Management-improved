@@ -1,9 +1,6 @@
-import React from 'react'
-import { useContext } from 'react'
+import React, { useContext, useEffect } from 'react'
 import { DoctorContext } from '../../context/DoctorContext'
-import { useEffect } from 'react';
-import { AppContext } from '../../context/AppContext';
-import { assets } from '../../assets/assets';
+import { AppContext } from '../../context/AppContext'
 
 const DoctorAppointments = () => {
     const {dtoken,appointments,getAppointments,completeAppointment,cancelAppointment}=useContext(DoctorContext);
@@ -75,7 +72,7 @@ const DoctorAppointments = () => {
                         Completed
                       </span>
                     ) : (
-                      <div className='flex gap-2'>
+                      <div className='flex flex-wrap gap-2'>
                         <button
                           onClick={()=>cancelAppointment(item._id)}
                           className='p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 hover:border-red-300 transition-all duration-200'
