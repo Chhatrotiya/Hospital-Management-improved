@@ -5,6 +5,12 @@ const messageSchema = new mongoose.Schema({
   text: { type: String, required: true },
   status: { type: String, enum: ['sent', 'received', 'read'], default: 'sent' },
   createdAt: { type: Number, default: () => Date.now() },
+  editedAt: { type: Number, default: null },
+  replyTo: {
+    messageId: { type: String, default: '' },
+    sender: { type: String, enum: ['user', 'doctor', ''], default: '' },
+    text: { type: String, default: '' }
+  },
   tempId: { type: String, default: '' }
 }, { _id: true })
 

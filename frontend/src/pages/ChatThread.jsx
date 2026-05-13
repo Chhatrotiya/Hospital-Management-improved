@@ -13,6 +13,9 @@ const ChatThread = () => {
   const [newMessage, setNewMessage] = useState('')
   const [socket, setSocket] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [menuState, setMenuState] = useState(null)
+  const [editingMessage, setEditingMessage] = useState(null)
+  const [replyingTo, setReplyingTo] = useState(null)
   const bottomRef = useRef(null)
   const messageListRef = useRef(null)
   const hasPositionedInitialScrollRef = useRef(false)
@@ -115,6 +118,18 @@ const ChatThread = () => {
       }
     })
 
+    socketClient.on('messageEdited', ({ message }) => {
+      if (!message?._id) return
+      setMessages((prev) => prev.map((item) => item._id === message._id ? message : item))
+      setEditingMessage((current) => current?._id === message._id ? null : current)
+    })
+
+    socketClient.on('messageDeleted', ({ messageId }) => {
+      if (!messageId) return
+      setMessages((prev) => prev.filter((item) => item._id !== messageId))
+      setEditingMessage((current) => current?._id === messageId ? null : current)
+    })
+
     socketClient.on('connect_error', (error) => {
       toast.error(error.message || 'Unable to connect to chat server')
     })
@@ -129,22 +144,102 @@ const ChatThread = () => {
     }
   }, [backendUrl, token, chatId, loadChatCount])
 
+  useEffect(() => {
+    const closeMenu = () => setMenuState(null)
+    window.addEventListener('click', closeMenu)
+    window.addEventListener('scroll', closeMenu, true)
+    return () => {
+      window.removeEventListener('click', closeMenu)
+      window.removeEventListener('scroll', closeMenu, true)
+    }
+  }, [])
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !socket) return
     const messageText = newMessage.trim()
+
+    if (editingMessage) {
+      socket.emit('editMessage', { chatId, messageId: editingMessage._id, text: messageText })
+      setMessages((prev) => prev.map((item) => (
+        item._id === editingMessage._id ? { ...item, text: messageText, editedAt: Date.now() } : item
+      )))
+      setEditingMessage(null)
+      setNewMessage('')
+      return
+    }
+
     const tempId = `temp-${Date.now()}`
+    const replyTo = replyingTo ? {
+      messageId: replyingTo._id,
+      sender: replyingTo.sender,
+      text: replyingTo.text
+    } : undefined
     const optimisticMessage = {
       _id: tempId,
       tempId,
       sender: 'user',
       text: messageText,
       status: 'sent',
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      replyTo
     }
     setMessages((prev) => [...prev, optimisticMessage])
     setNewMessage('')
-    socket.emit('sendMessage', { chatId, text: messageText, sender: 'user', tempId })
+    setReplyingTo(null)
+    socket.emit('sendMessage', { chatId, text: messageText, sender: 'user', tempId, replyToMessageId: replyingTo?._id })
     setTimeout(scrollToBottom, 50)
+  }
+
+  const openMessageMenu = (event, message) => {
+    event.stopPropagation()
+    const buttonRect = event.currentTarget.getBoundingClientRect()
+    setMenuState({
+      message,
+      x: buttonRect.right - 160,
+      y: buttonRect.bottom + 6
+    })
+  }
+
+  const startReplyMessage = (message) => {
+    if (message._id?.startsWith('temp-')) {
+      toast.info('You can reply after this message is saved')
+      return
+    }
+    setReplyingTo(message)
+    setEditingMessage(null)
+    setMenuState(null)
+  }
+
+  const startEditMessage = (message) => {
+    if (message.sender !== 'user' || message._id?.startsWith('temp-')) {
+      toast.info('You can edit your sent messages after they are saved')
+      return
+    }
+    setEditingMessage(message)
+    setReplyingTo(null)
+    setNewMessage(message.text)
+    setMenuState(null)
+  }
+
+  const deleteMessage = (message) => {
+    if (message.sender !== 'user' || message._id?.startsWith('temp-')) {
+      toast.info('You can delete your sent messages after they are saved')
+      return
+    }
+    const confirmed = window.confirm('Delete this message?')
+    if (!confirmed) return
+    socket?.emit('deleteMessage', { chatId, messageId: message._id })
+    setMessages((prev) => prev.filter((item) => item._id !== message._id))
+    setMenuState(null)
+  }
+
+  const cancelEdit = () => {
+    setEditingMessage(null)
+    setNewMessage('')
+  }
+
+  const cancelReply = () => {
+    setReplyingTo(null)
   }
 
   return (
@@ -168,10 +263,25 @@ const ChatThread = () => {
                 const isUser = message.sender === 'user'
                 return (
                   <div key={message._id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] rounded-3xl px-4 py-3 shadow-sm ${isUser ? 'bg-primary/10 text-stone-800 border border-primary/20' : 'bg-stone-100 text-stone-800 border border-stone-200'}`}>
+                    <div className={`relative max-w-[80%] rounded-3xl px-4 py-3 pr-10 shadow-sm ${isUser ? 'bg-primary/10 text-stone-800 border border-primary/20' : 'bg-stone-100 text-stone-800 border border-stone-200'}`}>
+                      <button
+                        type='button'
+                        onClick={(event) => openMessageMenu(event, message)}
+                        className='absolute right-3 top-2 flex h-7 w-7 items-center justify-center rounded-full text-stone-500 hover:bg-white/70 hover:text-stone-800'
+                        aria-label='Message options'
+                      >
+                        <span className='text-lg leading-none'>...</span>
+                      </button>
+                      {message.replyTo?.text && (
+                        <div className={`mb-2 rounded-2xl border-l-4 px-3 py-2 text-xs ${isUser ? 'border-primary bg-white/70 text-stone-600' : 'border-stone-300 bg-white text-stone-600'}`}>
+                          <p className='font-semibold'>{message.replyTo.sender === 'user' ? 'You' : 'Doctor'}</p>
+                          <p className='mt-1 max-h-9 overflow-hidden break-words'>{message.replyTo.text}</p>
+                        </div>
+                      )}
                       <p className='text-sm leading-6 break-words whitespace-pre-wrap'>{message.text}</p>
                       <div className='mt-2 text-[11px] text-stone-400 flex items-center justify-between gap-2'>
                         <span>{new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        {message.editedAt && <span>Edited</span>}
                         {isUser && (
                           <span className='font-semibold'>
                             {message.status === 'sent' && 'Sent'}
@@ -188,13 +298,74 @@ const ChatThread = () => {
             <div ref={bottomRef} />
           </div>
 
+          {menuState && (
+            <div
+              className='fixed z-50 w-40 overflow-hidden rounded-xl border border-stone-200 bg-white py-1 shadow-lg'
+              style={{ left: menuState.x, top: menuState.y }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <button
+                type='button'
+                onClick={() => startReplyMessage(menuState.message)}
+                className='w-full px-4 py-2 text-left text-sm text-stone-700 hover:bg-stone-100'
+              >
+                Reply
+              </button>
+              {menuState.message.sender === 'user' && (
+                <button
+                  type='button'
+                  onClick={() => startEditMessage(menuState.message)}
+                  className='w-full px-4 py-2 text-left text-sm text-stone-700 hover:bg-stone-100'
+                >
+                  Edit
+                </button>
+              )}
+              {menuState.message.sender === 'user' && (
+                <button
+                  type='button'
+                  onClick={() => deleteMessage(menuState.message)}
+                  className='w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50'
+                >
+                  Delete
+                </button>
+              )}
+            </div>
+          )}
+
           <div className='border-t border-stone-200 p-4 bg-stone-50'>
+            {replyingTo && (
+              <div className='mb-3 flex items-start justify-between gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-2 text-sm text-stone-600'>
+                <div className='min-w-0'>
+                  <p className='font-semibold text-stone-700'>Replying to {replyingTo.sender === 'user' ? 'your message' : 'Doctor'}</p>
+                  <p className='mt-1 truncate'>{replyingTo.text}</p>
+                </div>
+                <button
+                  type='button'
+                  onClick={cancelReply}
+                  className='shrink-0 font-semibold text-stone-500 hover:text-stone-800'
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+            {editingMessage && (
+              <div className='mb-3 flex items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-white px-4 py-2 text-sm text-stone-600'>
+                <span className='truncate'>Editing message</span>
+                <button
+                  type='button'
+                  onClick={cancelEdit}
+                  className='font-semibold text-stone-500 hover:text-stone-800'
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
             <div className='flex items-center gap-3'>
               <input
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 type='text'
-                placeholder='Write a message...'
+                placeholder={replyingTo ? 'Write a reply...' : 'Write a message...'}
                 className='flex-1 rounded-full border border-stone-200 bg-white px-4 py-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20'
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -207,7 +378,7 @@ const ChatThread = () => {
                 onClick={sendMessage}
                 className='rounded-full bg-primary px-5 py-3 text-black font-semibold hover:bg-teal-200 transition'
               >
-                Send
+                {editingMessage ? 'Update' : 'Send'}
               </button>
             </div>
           </div>

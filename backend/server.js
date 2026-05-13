@@ -121,7 +121,7 @@ io.on('connection', (socket) => {
     }
   })
 
-  socket.on('sendMessage', async ({ chatId, text, sender, tempId }) => {
+  socket.on('sendMessage', async ({ chatId, text, sender, tempId, replyToMessageId }) => {
     try {
       const token = socket.handshake.auth?.token
       const decoded = getUserFromToken(token)
@@ -146,11 +146,24 @@ io.on('connection', (socket) => {
         return
       }
 
+      let replyTo = undefined
+      if (replyToMessageId) {
+        const originalMessage = chat.messages.id(replyToMessageId)
+        if (originalMessage) {
+          replyTo = {
+            messageId: originalMessage._id.toString(),
+            sender: originalMessage.sender,
+            text: originalMessage.text
+          }
+        }
+      }
+
       const message = {
         sender,
         text,
         status: 'sent',
         createdAt: Date.now(),
+        replyTo,
         tempId: tempId || ''
       }
       chat.messages.push(message)
@@ -187,6 +200,100 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.log(error)
       socket.emit('error', 'Unable to send message')
+    }
+  })
+
+  socket.on('editMessage', async ({ chatId, messageId, text }) => {
+    try {
+      const token = socket.handshake.auth?.token
+      const decoded = getUserFromToken(token)
+      if (!decoded) {
+        socket.emit('error', 'Authentication required')
+        return
+      }
+
+      const trimmedText = typeof text === 'string' ? text.trim() : ''
+      if (!trimmedText) {
+        socket.emit('error', 'Message cannot be empty')
+        return
+      }
+
+      const chat = await chatModel.findById(chatId)
+      if (!chat) {
+        socket.emit('error', 'Chat not found')
+        return
+      }
+
+      const message = chat.messages.id(messageId)
+      if (!message) {
+        socket.emit('error', 'Message not found')
+        return
+      }
+
+      const canEdit =
+        (message.sender === 'user' && chat.userId === decoded.id) ||
+        (message.sender === 'doctor' && chat.docId === decoded.id)
+      if (!canEdit) {
+        socket.emit('error', 'Not authorized to edit this message')
+        return
+      }
+
+      message.text = trimmedText
+      message.editedAt = Date.now()
+      chat.updatedAt = Date.now()
+      await chat.save()
+
+      const updatedMessage = chat.messages.id(messageId)
+      const event = { chatId, message: updatedMessage }
+      io.to(`chat_${chatId}`).emit('messageEdited', event)
+      io.to(`user_${chat.userId}`).emit('messageEdited', event)
+      io.to(`doctor_${chat.docId}`).emit('messageEdited', event)
+    } catch (error) {
+      console.log(error)
+      socket.emit('error', 'Unable to edit message')
+    }
+  })
+
+  socket.on('deleteMessage', async ({ chatId, messageId }) => {
+    try {
+      const token = socket.handshake.auth?.token
+      const decoded = getUserFromToken(token)
+      if (!decoded) {
+        socket.emit('error', 'Authentication required')
+        return
+      }
+
+      const chat = await chatModel.findById(chatId)
+      if (!chat) {
+        socket.emit('error', 'Chat not found')
+        return
+      }
+
+      const message = chat.messages.id(messageId)
+      if (!message) {
+        socket.emit('error', 'Message not found')
+        return
+      }
+
+      const canDelete =
+        (message.sender === 'user' && chat.userId === decoded.id) ||
+        (message.sender === 'doctor' && chat.docId === decoded.id)
+      if (!canDelete) {
+        socket.emit('error', 'Not authorized to delete this message')
+        return
+      }
+
+      chat.messages.pull({ _id: messageId })
+      chat.updatedAt = Date.now()
+      await chat.save()
+
+      const event = { chatId, messageId }
+      io.to(`chat_${chatId}`).emit('messageDeleted', event)
+      io.to(`user_${chat.userId}`).emit('messageDeleted', event)
+      io.to(`doctor_${chat.docId}`).emit('messageDeleted', event)
+    } catch (error) {
+      console.log(error)
+      socket.emit('error', 'Unable to delete message')
     }
   })
 
