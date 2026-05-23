@@ -15,6 +15,9 @@ import PatientsEdit from './pages/Admin/PatientsEdit';
 import { DoctorContext } from './context/DoctorContext';
 import DoctorDashboard from './pages/Doctor/DoctorDashboard';
 import DoctorAppointments from './pages/Doctor/DoctorAppointments';
+import DoctorChats from './pages/Doctor/DoctorChats';
+import DoctorChatThread from './pages/Doctor/DoctorChatThread';
+import DoctorPatientList from './pages/Doctor/DoctorPatientList';
 import DoctorProfile from './pages/Doctor/DoctorProfile';
 
 const App = () => {
@@ -38,6 +41,9 @@ const App = () => {
 
             <Route path='/doctor-dashboard' element={<DoctorDashboard/>}/>
             <Route path='/doctor-appointments' element={<DoctorAppointments/>}/>
+            <Route path='/doctor-chats' element={<DoctorChats/>}/>
+            <Route path='/doctor-patients' element={<DoctorPatientList/>}/>
+            <Route path='/doctor-chat/:chatId' element={<DoctorChatThread/>}/>
             <Route path='/doctor-profile' element={<DoctorProfile/>}/>
           </Routes>
         </main>

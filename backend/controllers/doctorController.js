@@ -2,6 +2,7 @@ import doctorModel from "../models/doctorModel.js";
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import appointmentModel from "../models/appointmentModel.js";
+import userModel from "../models/userModel.js";
 
 
 const changeAvailability=async(req,res)=>{
@@ -177,6 +178,54 @@ const updateDoctorProfile=async (req,res)=>{
     }
 }
 
+const doctorPatientsList = async (req, res) => {
+    try {
+        const { docId } = req.body
+        const users = await userModel.find({}).select(['-password'])
+        const appointments = await appointmentModel.find({ docId }).sort({ date: -1 })
+        const latestByUser = new Map()
+
+        appointments.forEach((appointment) => {
+            const key = String(appointment.userId)
+            if (!latestByUser.has(key)) {
+                latestByUser.set(key, {
+                    lastAppointmentId: appointment._id,
+                    lastAppointmentDate: appointment.date || 0,
+                    lastSlotDate: appointment.slotDate,
+                    lastSlotTime: appointment.slotTime,
+                    lastStatus: appointment.cancelled ? 'Cancelled' : appointment.isCompleted ? 'Completed' : 'Upcoming'
+                })
+            }
+        })
+
+        const patients = users.map((user) => {
+            const appointment = latestByUser.get(String(user._id)) || {}
+            return {
+                userId: user._id,
+                name: user.name,
+                image: user.image || '',
+                lastAppointmentId: appointment.lastAppointmentId || '',
+                lastSlotDate: appointment.lastSlotDate || '',
+                lastSlotTime: appointment.lastSlotTime || '',
+                lastStatus: appointment.lastStatus || 'No Appointments',
+                lastAppointmentDate: appointment.lastAppointmentDate || 0
+            }
+        })
+
+        const sortedPatients = patients
+            .filter((patient) => patient.lastAppointmentId)
+            .sort((a, b) => b.lastAppointmentDate - a.lastAppointmentDate)
+            .concat(
+                patients.filter((patient) => !patient.lastAppointmentId)
+            )
+
+        res.json({ success: true, patients: sortedPatients })
+    } catch (error) {
+        console.log(error)
+        res.json({ success: false, message: error.message })
+    }
+}
+
 export {changeAvailability,
     doctorsList,
     loginDoctor,appointmentDoctor,
@@ -184,5 +233,6 @@ export {changeAvailability,
     appointmentCancelled,
     doctorDashboard,
     doctorProfile,
-    updateDoctorProfile
+    updateDoctorProfile,
+    doctorPatientsList
 }

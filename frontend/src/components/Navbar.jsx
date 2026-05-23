@@ -7,7 +7,7 @@ const Navbar = () => {
     const navigate = useNavigate();
     const [showMenu, setShowMenu] = useState(false);
 
-    const { token, setToken } = useContext(Appcontext)
+    const { token, setToken, unreadChatCount } = useContext(Appcontext)
 
     const logOut = () => {
         setToken(false);
@@ -33,14 +33,32 @@ const Navbar = () => {
         {/* Desktop right side */}
         <div className='flex items-center gap-4'>
           {token
-            ? <div className='hidden md:flex items-center gap-2 cursor-pointer group relative'>
-                <img className='w-8 rounded-lg' src={assets.profile_pic} alt="" />
-                <img className='w-2.5' src={assets.dropdown_icon} alt="" />
-                <div className='absolute top-0 right-0 pt-14 text-base font-medium text-stone-600 z-20 hidden group-hover:block'>
-                  <div className='min-w-48 bg-white shadow-xl rounded-lg flex flex-col gap-4 p-4 border border-stone-100'>
-                    <p onClick={() => navigate('/my-profile')} className='hover:text-primary cursor-pointer transition-colors'>My Profile</p>
-                    <p onClick={() => navigate('/my-appointment')} className='hover:text-primary cursor-pointer transition-colors'>My Appointment</p>
-                    <p onClick={logOut} className='hover:text-red-500 cursor-pointer transition-colors'>Logout</p>
+            ? <div className='hidden md:flex items-center gap-4'>
+                <button
+                  onClick={() => navigate('/chats')}
+                  className='relative p-2 rounded-full hover:bg-stone-100 transition'
+                  aria-label='Open chats'
+                >
+                  <svg className='w-5 h-5 text-stone-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.836 9.836 0 01-5-1.3L3 21l1.3-4.5A8.96 8.96 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z' />
+                  </svg>
+                  {unreadChatCount > 0 && (
+                    <span className='absolute -top-1 -right-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white'>
+                      {unreadChatCount}
+                    </span>
+                  )}
+                </button>
+                <div className='relative group'>
+                  <div className='flex items-center gap-2 cursor-pointer'>
+                    <img className='w-8 rounded-lg' src={assets.profile_pic} alt="" />
+                    <img className='w-2.5' src={assets.dropdown_icon} alt="" />
+                  </div>
+                  <div className='absolute top-0 right-0 pt-14 text-base font-medium text-stone-600 z-20 hidden group-hover:block'>
+                    <div className='min-w-48 bg-white shadow-xl rounded-lg flex flex-col gap-4 p-4 border border-stone-100'>
+                      <p onClick={() => navigate('/my-profile')} className='hover:text-primary cursor-pointer transition-colors'>My Profile</p>
+                      <p onClick={() => navigate('/my-appointment')} className='hover:text-primary cursor-pointer transition-colors'>My Appointment</p>
+                      <p onClick={logOut} className='hover:text-red-500 cursor-pointer transition-colors'>Logout</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -99,6 +117,12 @@ const Navbar = () => {
             to='/contact' onClick={closeMenu}
             className={({ isActive }) => `block w-full py-4 px-5 text-base font-medium border-b border-stone-100 transition-colors ${isActive ? 'text-primary bg-teal-50' : 'text-stone-700 hover:text-primary hover:bg-stone-50'}`}
           >Contact Us</NavLink>
+          {token && (
+            <NavLink
+              to='/chats' onClick={closeMenu}
+              className={({ isActive }) => `block w-full py-4 px-5 text-base font-medium border-b border-stone-100 transition-colors ${isActive ? 'text-primary bg-teal-50' : 'text-stone-700 hover:text-primary hover:bg-stone-50'}`}
+            >Chats</NavLink>
+          )}
         </nav>
 
         {/* Auth section */}

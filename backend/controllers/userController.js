@@ -251,7 +251,7 @@ if(!appointmentData || appointmentData.cancelled){
 }
    
 const option={
-    amount:appointmentData.amount,
+    amount:Math.round(appointmentData.amount * 100),
     currency:process.env.CURRENCY,
     receipt:appointmentId
 }

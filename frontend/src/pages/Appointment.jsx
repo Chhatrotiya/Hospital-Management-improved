@@ -100,6 +100,25 @@ const Appointment = () => {
     }
   }
 
+  const startChat=async() => {
+    if (!token) {
+      toast.warn('Login to chat with doctor');
+      return navigate('/login')
+    }
+
+    try {
+      const { data } = await axios.post(backendUrl + '/api/user/chat', { doctorId: docId }, { headers: { token } })
+      if (data.success) {
+        navigate(`/chat/${data.chat._id}`)
+      } else {
+        toast.error(data.message || 'Unable to start chat with doctor')
+      }
+    } catch (error) {
+      console.log(error)
+      toast.error(error.response?.data?.message || error.message || 'Unable to start chat with doctor')
+    }
+  }
+
   useEffect(()=>
   {
     fetchDocInfo()
@@ -211,15 +230,24 @@ const Appointment = () => {
             </div>
           </div>
 
-          {/* Book Appointment Button */}
-          <div className='text-center'>
-            <button
-              onClick={bookAppointment}
-              className='bg-stone-900 hover:bg-stone-800 text-white text-lg font-medium px-12 py-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-              disabled={!slotTime}
-            >
-              {slotTime ? 'Book Appointment' : 'Select a time slot'}
-            </button>
+          {/* Book Appointment and Start Chat Buttons */}
+          <div className='text-center space-y-4'>
+            <div className='flex flex-col md:flex-row items-center justify-center gap-4'>
+              <button
+                onClick={bookAppointment}
+                className='bg-stone-900 hover:bg-stone-800 text-white text-lg font-medium px-12 py-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                disabled={!slotTime}
+              >
+                {slotTime ? 'Book Appointment' : 'Select a time slot'}
+              </button>
+              <button
+                onClick={startChat}
+                className='bg-white border border-stone-900 text-stone-900 text-lg font-medium px-10 py-4 rounded-lg transition-colors hover:bg-stone-900 hover:text-white flex items-center justify-center gap-2'
+              >
+                <span className='text-2xl leading-none'>+</span>
+                <span>Chat with Doctor</span>
+              </button>
+            </div>
             {!slotTime && (
               <p className='text-stone-500 text-sm mt-2'>Please select a date and time to continue</p>
             )}

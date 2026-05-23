@@ -1,7 +1,8 @@
 import axios from "axios";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createContext } from "react";
 import { toast } from "react-toastify";
+import { io } from 'socket.io-client'
 
 export const DoctorContext=createContext()
 const  DoctorContextProvider=(props)=>{
@@ -11,6 +12,8 @@ const  DoctorContextProvider=(props)=>{
     const [appointments,setAppointments]=useState([]);
     const [dashData,setDashData]=useState(false);
     const [profileData,setProfileData]=useState(false);
+    const [unreadChatCount,setUnreadChatCount]=useState(0);
+    const [socket, setSocket] = useState(null);
 
     const getAppointments= async(req,res)=>{
         try {
@@ -49,6 +52,18 @@ const  DoctorContextProvider=(props)=>{
         }
     }
 
+    const loadChatCount=async()=>{
+        try {
+            const { data } = await axios.get(backendUrl + '/api/doctor/chats', { headers: { dtoken } })
+            if (data.success) {
+                const count = data.chats.reduce((total, chat) => total + (chat.unreadCount || 0), 0)
+                setUnreadChatCount(count)
+            }
+        } catch (err) {
+            console.log(err)
+        }
+    }
+
     const getDashData=async()=>{
         try {
             const {data}=await axios.get(backendUrl + '/api/doctor/dashboard',{headers:{dtoken}});
@@ -78,13 +93,61 @@ const  DoctorContextProvider=(props)=>{
         }
      }
 
+useEffect(() => {
+  if (dtoken) {
+    loadChatCount()
+  } else {
+    setUnreadChatCount(0)
+  }
+}, [dtoken])
+
+useEffect(() => {
+  if (!dtoken) {
+    if (socket) {
+      socket.disconnect()
+      setSocket(null)
+    }
+    return
+  }
+
+  const socketClient = io(backendUrl, { auth: { token: dtoken } })
+  setSocket(socketClient)
+
+  socketClient.on('connect', () => {
+    socketClient.emit('joinUser', { role: 'doctor' })
+  })
+
+  socketClient.on('newMessage', () => {
+    loadChatCount()
+  })
+
+  socketClient.on('messageStatusUpdate', () => {
+    loadChatCount()
+  })
+
+  socketClient.on('connect_error', (err) => {
+    console.log('Doctor socket connect error:', err?.message || err)
+  })
+
+  socketClient.on('error', (err) => {
+    console.log('Doctor socket error:', err)
+  })
+
+  return () => {
+    socketClient.disconnect()
+    setSocket(null)
+  }
+}, [backendUrl, dtoken])
+
 const value={
 backendUrl,
 dtoken,setDtoken,
 getAppointments,appointments,
 completeAppointment,cancelAppointment,
 dashData,setDashData,getDashData,
-profileData,setProfileData,getProfileData
+profileData,setProfileData,getProfileData,
+unreadChatCount,loadChatCount,
+socket
 }
 return(
     <DoctorContext.Provider value={value}>

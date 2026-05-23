@@ -1,11 +1,14 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Appcontext } from '../context/AppContext';
+import axios from 'axios'
+import { toast } from 'react-toastify';
 
 const Doctors = () => {
   const {speciality}=useParams();
-  const {doctors}=useContext(Appcontext);
+  const {doctors,backendUrl,token}=useContext(Appcontext);
   const [filterDoc,setFilterDoc]=useState([]);
+  const [searchQuery, setSearchQuery] = useState('')
   const navigate=useNavigate();
    const [showFilter,setShowFilter]=useState(false)
   const applyFilter=()=>{
@@ -20,6 +23,30 @@ const Doctors = () => {
   useEffect(()=>{
     applyFilter()
   },[doctors,speciality])
+
+  const visibleDoctors = filterDoc.filter((doc) =>
+    doc.name?.toLowerCase().includes(searchQuery.trim().toLowerCase())
+  )
+
+  const startChat = async (doctorId) => {
+    if (!token) {
+      toast.warn('Please login to chat with a doctor');
+      return navigate('/login')
+    }
+
+    try {
+      const { data } = await axios.post(backendUrl + '/api/user/chat', { doctorId }, { headers: { token } })
+      if (data.success) {
+        navigate(`/chat/${data.chat._id}`)
+      } else {
+        toast.error(data.message || 'Unable to start chat')
+      }
+    } catch (error) {
+      console.log(error)
+      toast.error(error.response?.data?.message || error.message || 'Unable to start chat')
+    }
+  }
+
   return (
     <div className='bg-transparent min-h-screen py-8 px-4'>
       <div className='max-w-7xl mx-auto'>
@@ -70,9 +97,18 @@ const Doctors = () => {
 
           {/* Doctors Grid */}
           <div className='flex-1'>
+            <div className='mb-6'>
+              <input
+                type='search'
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder='Search doctors by name'
+                className='w-full rounded-3xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm outline-none transition focus:border-stone-900 focus:ring-2 focus:ring-stone-200'
+              />
+            </div>
             <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
               {
-                filterDoc.map((item,index)=>(
+                visibleDoctors.map((item,index)=>(
                   <div onClick={()=>navigate(`/appointment/${item._id}`)}
                        className='bg-white border border-stone-200 rounded-lg overflow-hidden cursor-pointer hover:border-primary hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-2 transition-all duration-300 group'
                        key={index}>
@@ -87,6 +123,16 @@ const Doctors = () => {
                     <div className='p-4'>
                       <h3 className='text-stone-900 text-lg font-semibold mb-1 group-hover:text-primary transition-colors'>{item.name}</h3>
                       <p className='text-stone-600 text-sm mb-3'>{item.speciality}</p>
+                      <div className='flex flex-col gap-3'>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          startChat(item._id)
+                        }}
+                        className='w-full rounded-full bg-primary px-4 py-3 text-sm font-semibold text-black hover:bg-teal-200 transition'
+                      >
+                        💬 Chat
+                      </button>
                       <div className='flex items-center justify-between'>
                         <span className='text-teal-600 text-sm font-medium'>Book Appointment</span>
                         <div className='w-6 h-6 bg-teal-50 rounded-full flex items-center justify-center group-hover:bg-teal-100 transition-colors'>
@@ -94,17 +140,21 @@ const Doctors = () => {
                         </div>
                       </div>
                     </div>
+                    </div>
                   </div>
                 ))
               }
             </div>
 
             {/* No doctors found message */}
-            {filterDoc.length === 0 && (
+            {visibleDoctors.length === 0 && (
               <div className='col-span-full text-center py-12'>
-                <div className='text-stone-500 text-lg'>No doctors found for this specialty</div>
+                <div className='text-stone-500 text-lg'>No doctors found matching your search.</div>
                 <button
-                  onClick={()=>navigate('/doctors')}
+                  onClick={()=>{
+                    setSearchQuery('')
+                    navigate('/doctors')
+                  }}
                   className='mt-4 bg-stone-900 hover:bg-stone-800 text-white px-6 py-2 rounded-lg font-medium transition-colors'
                 >
                   View All Doctors
